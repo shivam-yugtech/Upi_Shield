@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 // Tell Express to parse JSON data sent by the mobile app
 app.use(express.json());
