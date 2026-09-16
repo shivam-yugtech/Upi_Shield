@@ -9,8 +9,8 @@ export default function Index() {
   const [isReporting, setIsReporting] = useState(false);
 
   // 1. Update these with your laptop's active IP address!
-  const SCAN_URL = 'https://upi-shield-7mcc.onrender.com/'; 
-  const REPORT_URL = 'https://upi-shield-7mcc.onrender.com/';
+  const SCAN_URL = 'https://upi-shield-7mcc.onrender.com/api/scan'; 
+  const REPORT_URL = 'https://upi-shield-7mcc.onrender.com/api/report';
 
   // 2. Scan Function
   const scanMessageWithBackend = async () => {
