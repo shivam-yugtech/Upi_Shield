@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
 
+import { API_BASE_URL } from '@/config/api';
+
 export default function Index() {
   const [incomingText, setIncomingText] = useState('');
   const [reportText, setReportText] = useState('');
@@ -8,9 +10,8 @@ export default function Index() {
   const [isLoading, setIsLoading] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
 
-  // 1. Update these with your laptop's active IP address!
-  const SCAN_URL = 'https://upi-shield-7mcc.onrender.com/api/scan'; 
-  const REPORT_URL = 'https://upi-shield-7mcc.onrender.com/api/report';
+  const SCAN_URL = `${API_BASE_URL}/api/scan`;
+  const REPORT_URL = `${API_BASE_URL}/api/report`;
 
   // 2. Scan Function
   const scanMessageWithBackend = async () => {

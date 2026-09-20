@@ -32,158 +32,183 @@ Common attack vectors targeting individuals include:
 
 ---
 
-## ⚙️ Features Built (MVP Core)
+## ⚙️ Features Built (current)
 
-* **Live Cloud Threat Assessment:** Sends user notification texts natively over network streams to automated backend processing points.
-* **RegEx Phishing Scanners:** Built-in pattern recognition identifying suspicious `http://` or `https://` structures inside messages.
-* **Crowdsourced Telemetry Ingestion:** Interactive framework allowing users to submit new scam text variations, updating active tracking variables in real-time.
-* **Dynamic UI Warning System:** Modifies device view backgrounds to high-alert crimson states when potential exploits are caught.
+* **Scan pasted message text** against **ACTIVE** threat phrases stored in PostgreSQL.
+* **Word-boundary phrase matching** (case-insensitive). URLs are detected as a separate signal and are **not** automatically classified as scams.
+* **Scam reports** are stored as **PENDING** (`ScamReport`). They do **not** immediately join the live detection list.
+* **Health check** for process + database connectivity.
+* **Expo Home screen** that POSTs to `/api/scan` and `/api/report`.
+
+Not implemented yet: authentication, admin review UI, scan history, risk scores, ML, SMS monitoring.
 
 ---
 
 ## 🏗️ Workspace Architecture
 
-This project is configured as a standalone **Monorepo** to maintain full-stack continuous alignment. The workspace separates client layouts from backend execution scripts:
-
 ```text
-📁 upi-shield (Monorepo Workspace Root)
-├── 📁 upi-shield-app      # Cross-platform mobile project file trees (Expo framework)
-│   ├── 📁 app             # File-based view structure
-│   │   └── 📄 index.tsx   # Entry workspace screen, user forms, and fetch drivers
-│   └── 📄 package.json    # Frontend dependency tracking map
-├── 📁 upi-shield-backend  # Cloud-native API gateway microservice (Node.js runtime)
-│   ├── 📄 server.js       # Express routing definitions and text scanners
-│   └── 📄 package.json    # Server package ecosystem map
-└── 📄 README.md           # Master documentation matrix (This File)
+upi-shield/
+├── upi-shield-app/                 # Expo (React Native) client
+│   ├── src/app/index.tsx           # Scan + report screen
+│   ├── src/config/api.ts           # API base URL (EXPO_PUBLIC_API_BASE_URL)
+│   └── .env.example
+├── upi-shield-backend/             # Express 5 API
+│   ├── server.js                   # `node server.js` entry
+│   ├── src/                        # app, routes, detection, middleware
+│   ├── prisma/schema.prisma
+│   ├── prisma/seed.js
+│   └── .env.example
+└── README.md
 ```
 
 ---
 
-## 🛠️ Technical Stack & Modules
+## 🛠️ Technical Stack
 
-### 📱 Frontend Layer (`/upi-shield-app`)
+### Frontend (`upi-shield-app`)
 
-* **Runtime/Framework:** React Native running on **Expo Platform (Expo Router File System)**.
-* **Language:** JavaScript / TypeScript.
-* **Network Driver:** **Fetch API** utilizing asynchronous JavaScript operations (`async/await`) to carry structural text objects over external networks.
-* **State Management:** Native React Hooks (`useState`, `useEffect`) tracking user data inputs and threat statuses.
-* **UI Components:** `ScrollView`, `TextInput`, `TouchableOpacity`, `ActivityIndicator`, and native platform `Alert` popup notifications.
+* Expo SDK 57, Expo Router, React Native, TypeScript
+* `EXPO_PUBLIC_API_BASE_URL` for the API origin (see `.env.example`)
 
-### 🔌 Backend Processing Gateway (`/upi-shield-backend`)
+### Backend (`upi-shield-backend`)
 
-* **Runtime:** **Node.js** environment.
-* **Framework:** **Express.js** minimal web infrastructure.
-* **Parsing Middleware:** Native Express body parsers (`express.json()`).
-* **Environment Ports:** Configuration variables (`process.env.PORT`) handling dynamic deployment adjustments natively.
-* **Database Mock Engine:** Live variable indexing matrices running keyword calculations without initial structural load drops.
+* Node.js 18+, Express 5
+* PostgreSQL + Prisma ORM
+* dotenv, cors, helmet, express-rate-limit, Zod
+* Tests: Node.js built-in test runner (`node --test`)
 
 ---
 
-## 🔋 API Reference & Routing Layer
+## 🔋 API Reference
 
-### 1. Threat Signature Evaluation Route
+None of these routes require authentication.
 
-* **Endpoint:** `/api/scan`
-* **Method:** `POST`
-* **Payload Format:** `application/json`
-* **Request Schema:**
-  ```json
-  {
-    "messageText": "Dear user your electricity bill is due, click https://fake-pay.in immediately."
-  }
-  ```
-* **Response Scenarios:**
-  * **Threat Flagged (200 OK):**
-    ```json
-    {
-      "isScam": true,
-      "reason": "Contains an unverified web link."
-    }
-    ```
-  * **Clear State (200 OK):**
-    ```json
-    {
-      "isScam": false,
-      "message": "Message appears safe."
-    }
-    ```
+### `GET /health`
 
-### 2. Crowdsourced Telemetry Route
+Checks that the API is up and that PostgreSQL responds.
 
-* **Endpoint:** `/api/report`
-* **Method:** `POST`
-* **Payload Format:** `application/json`
-* **Request Schema:**
-  ```json
-  {
-    "newScamPhrase": "Free mobile recharge offer"
-  }
-  ```
-* **Response Schema (200 OK):**
-  ```json
-  {
-    "success": true,
-    "message": "Thank you! This phrase has been added to safeguard the community."
-  }
-  ```
+```json
+{ "status": "ok", "database": "connected" }
+```
+
+Returns **503** if the database is unavailable:
+
+```json
+{ "status": "error", "database": "disconnected" }
+```
+
+### `GET /api/keywords`
+
+Returns ACTIVE threat phrases only (no extra DB fields).
+
+```json
+{ "success": true, "keywords": ["apk download", "account blocked"] }
+```
+
+### `POST /api/scan`
+
+Body: `{ "messageText": "..." }` (string, trimmed, 1–5000 characters).
+
+Phrase match:
+
+```json
+{ "success": true, "isScam": true, "reason": "Flagged phrase found: \"electricity bill\"" }
+```
+
+No phrase match:
+
+```json
+{ "success": true, "isScam": false, "message": "No obvious scam indicators detected." }
+```
+
+If a URL is present but no phrase matched, `isScam` stays `false` and `urlDetected` may be `true`. Invalid input returns **400** `{ "success": false, "error": "..." }`.
+
+### `POST /api/report`
+
+Body: `{ "newScamPhrase": "..." }` (string, trimmed, 3–200 characters).
+
+Stores a **PENDING** `ScamReport`. Does not activate the phrase for scanning.
+
+```json
+{ "success": true, "message": "Report submitted for review." }
+```
 
 ---
 
 ## 📱 Mobile Frontend Flow
 
-The frontend application executes threat scans in three coordinated phases:
-
-1. **Input Vector Evaluation:** String extraction checks the data values input into the view blocks.
-2. **Network Request Packaging:** The string data is parsed into structural payloads and passed out via explicit asynchronous fetch calls.
-3. **UI Feedback Transformation:** The UI checks the `isScam` key returned from the cloud endpoint. If it maps to true, background states change color dynamically while structural system notifications map exact reason variables to alert views.
+1. User pastes text on Home (`src/app/index.tsx`).
+2. App POSTs JSON to `{API_BASE_URL}/api/scan` or `/api/report`.
+3. If `isScam` is true, the screen turns red and shows an alert with `reason`.
 
 ---
 
 ## 🚀 Local Installation & Execution
 
-### 1. Pre-requisites
+### Prerequisites
 
-Ensure you have **Node.js** (v16+ recommended) and **Git** configured locally.
+* Node.js 18+
+* PostgreSQL
+* Git
 
-### 2. Setting Up the Backend Server
-
-Clone the workspace repository and enter the server directory:
-
-```bash
-git clone https://github.com/your-username/upi-shield.git
-cd upi-shield/upi-shield-backend
-```
-
-Install all backend Express dependencies and boot up your local Node process server:
+### 1. Backend
 
 ```bash
+cd upi-shield-backend
 npm install
-node server.js
+copy .env.example .env
 ```
 
-The console will log: `🛡️ UPI Shield backend running smoothly on http://localhost:5000`
+On macOS/Linux use `cp .env.example .env`. Edit `.env` and set a real `DATABASE_URL` (do not commit `.env`):
 
-### 3. Running the Mobile Application
-
-Open a clean separate terminal screen, shift into the mobile app project folder:
-
-```bash
-cd ../upi-shield-app
+```env
+PORT=5000
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/upi_shield"
+CLIENT_ORIGIN="*"
 ```
 
-Install all necessary Expo component structures:
+Then:
 
 ```bash
+npx prisma generate
+npx prisma migrate dev --name init
+npm run prisma:seed
+npm start
+```
+
+Equivalent scripts: `npm run prisma:generate`, `npm run prisma:migrate`, `npm run prisma:seed`.
+
+The API listens on `http://localhost:5000`.
+
+Tests (detection + request validation; they do not require PostgreSQL):
+
+```bash
+npm test
+```
+
+### 2. Point the Expo app at an API
+
+Copy `upi-shield-app/.env.example` to `upi-shield-app/.env` (or `.env.local`).
+
+| Client | `EXPO_PUBLIC_API_BASE_URL` |
+|---|---|
+| Default / production | `https://upi-shield-7mcc.onrender.com` |
+| Emulator or Expo web on the same PC | `http://localhost:5000` |
+| Physical phone | `http://YOUR_PC_LAN_IP:5000` |
+
+**On a physical phone, `localhost` is the phone itself, not your computer.** Use the PC’s LAN IP (for example `http://192.168.1.10:5000`) and keep the phone on the same Wi-Fi. Restart Expo after changing env vars, then reload the app.
+
+If `EXPO_PUBLIC_API_BASE_URL` is unset, the app uses the production Render URL.
+
+### 3. Mobile app
+
+```bash
+cd upi-shield-app
 npm install
-```
-
-Launch the Metro development system engine:
-
-```bash
 npx expo start
 ```
 
-*Note: Boot up the **Expo Go** reader app directly via the Google Play Store on your Android device and capture the terminal display's visual QR vector to interact with your code layouts locally!*
+Open Expo Go, an emulator, or press `w` for web.
 
 ---
 
@@ -202,7 +227,7 @@ I am a beginner engineer who successfully structured this initial full-stack ope
 
 ### 🛠️ Open Core Engineering Roles:
 
-* **Database Infrastructure Engineer:** Help transition our runtime array framework into cloud-backed storage matrices (**MongoDB Atlas / PostgreSQL**).
+* **Database / API Engineer:** Help evolve Prisma models (scan history, users, moderation) on the existing PostgreSQL schema.
 * **UI/UX Interface Designer:** Expand the form views into structural cards localized across regional languages (Hindi, Tamil, Telugu, etc.) to optimize access for older age groups.
 * **Native Device Permissions Specialist:** Build Android accessibility bridges to safely read incoming text data vectors automatically in the background.
 

@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PhraseStatus {
+  ACTIVE
+  PENDING
+  DISABLED
+}
+
+enum ReportStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ThreatPhrase {
+  id        String       @id @default(cuid())
+  phrase    String       @unique
+  source    String
+  status    PhraseStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([status])
+}
+
+model ScamReport {
+  id        String       @id @default(cuid())
+  phrase    String       @unique
+  status    ReportStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([status])
+}
