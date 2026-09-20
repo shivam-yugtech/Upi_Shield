@@ -34,8 +34,7 @@ Common attack vectors targeting individuals include:
 
 ## ⚙️ Features Built (current)
 
-* **Scan pasted message text** against **ACTIVE** threat phrases stored in PostgreSQL.
-* **Word-boundary phrase matching** (case-insensitive). URLs are detected as a separate signal and are **not** automatically classified as scams.
+* **Scan pasted message text** with a rule-based risk score (0–100), category, and signals. `isScam` is true at score 60+. URLs are parsed locally and never fetched.
 * **Scam reports** are stored as **PENDING** (`ScamReport`). They do **not** immediately join the live detection list.
 * **Health check** for process + database connectivity.
 * **Expo Home screen** that POSTs to `/api/scan` and `/api/report`.
@@ -109,19 +108,40 @@ Returns ACTIVE threat phrases only (no extra DB fields).
 
 Body: `{ "messageText": "..." }` (string, trimmed, 1–5000 characters).
 
-Phrase match:
+The detector is a **rule-based heuristic** (not a probability and not ML). `isScam` is `true` when `riskScore >= 60`. Scores `30–59` are suspicious but not classified as scam. A normal URL by itself is not a scam. User-supplied URLs are parsed locally and never fetched.
+
+Scam example:
 
 ```json
-{ "success": true, "isScam": true, "reason": "Flagged phrase found: \"electricity bill\"" }
+{
+  "success": true,
+  "isScam": true,
+  "riskScore": 75,
+  "category": "KYC_PHISHING",
+  "signals": [
+    "KYC/account verification language detected",
+    "urgent action requested"
+  ],
+  "reason": "Multiple indicators suggest a possible KYC phishing scam.",
+  "urlDetected": false
+}
 ```
 
-No phrase match:
+Safe example (existing clients can keep using `isScam` / `message`):
 
 ```json
-{ "success": true, "isScam": false, "message": "No obvious scam indicators detected." }
+{
+  "success": true,
+  "isScam": false,
+  "riskScore": 0,
+  "category": "SAFE",
+  "signals": [],
+  "message": "No obvious scam indicators detected.",
+  "urlDetected": false
+}
 ```
 
-If a URL is present but no phrase matched, `isScam` stays `false` and `urlDetected` may be `true`. Invalid input returns **400** `{ "success": false, "error": "..." }`.
+Invalid input returns **400** `{ "success": false, "error": "..." }`.
 
 ### `POST /api/report`
 

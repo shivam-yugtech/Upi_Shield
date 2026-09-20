@@ -19,22 +19,22 @@ router.post('/', async (req, res, next) => {
       records.map((row) => row.phrase)
     );
 
-    if (result.isScam) {
-      return res.json({
-        success: true,
-        isScam: true,
-        reason: result.reason,
-      });
-    }
-
     const payload = {
       success: true,
-      isScam: false,
-      message: result.message,
+      isScam: result.isScam,
+      riskScore: result.riskScore,
+      category: result.category,
+      signals: result.signals,
+      urlDetected: result.urlDetected,
     };
 
-    if (result.urlDetected) {
-      payload.urlDetected = true;
+    if (result.isScam) {
+      payload.reason = result.reason;
+    } else {
+      payload.message = result.message;
+      if (result.riskScore > 0) {
+        payload.reason = result.reason;
+      }
     }
 
     return res.json(payload);
