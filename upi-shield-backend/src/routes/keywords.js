@@ -1,11 +1,11 @@
 const express = require('express');
-const { prisma } = require('../db');
+const { getDb } = require('../get-db');
 
 const router = express.Router();
 
 router.get('/', async (req, res, next) => {
   try {
-    const records = await prisma.threatPhrase.findMany({
+    const records = await getDb(req).threatPhrase.findMany({
       where: { status: 'ACTIVE' },
       select: { phrase: true },
       orderBy: { phrase: 'asc' },

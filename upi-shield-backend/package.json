@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test ./tests/detection.test.js ./tests/api.validation.test.js",
+    "test": "node --test ./tests/detection.test.js ./tests/api.validation.test.js ./tests/scans.test.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node prisma/seed.js",

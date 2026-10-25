@@ -26,6 +26,35 @@ const reportBodySchema = z
   })
   .strict();
 
+const paginationQuerySchema = z.object({
+  page: z.coerce
+    .number({ invalid_type_error: 'page must be a number.' })
+    .int('page must be an integer.')
+    .min(1, 'page must be at least 1.')
+    .default(1),
+  limit: z.coerce
+    .number({ invalid_type_error: 'limit must be a number.' })
+    .int('limit must be an integer.')
+    .min(1, 'limit must be at least 1.')
+    .max(50, 'limit cannot exceed 50.')
+    .default(20),
+});
+
+const scanIdSchema = z
+  .string()
+  .trim()
+  .min(1, 'Scan id is required.')
+  .max(64, 'Scan id is invalid.');
+
+const feedbackBodySchema = z
+  .object({
+    feedback: z.enum(['FALSE_POSITIVE', 'CONFIRMED_SCAM', 'UNSURE'], {
+      required_error: 'Feedback is required.',
+      invalid_type_error: 'Feedback must be FALSE_POSITIVE, CONFIRMED_SCAM, or UNSURE.',
+    }),
+  })
+  .strict();
+
 function parseBody(schema, body) {
   const result = schema.safeParse(body ?? {});
   if (!result.success) {
@@ -38,8 +67,16 @@ function parseBody(schema, body) {
   return result.data;
 }
 
+function parseQuery(schema, query) {
+  return parseBody(schema, query);
+}
+
 module.exports = {
   scanBodySchema,
   reportBodySchema,
+  paginationQuerySchema,
+  scanIdSchema,
+  feedbackBodySchema,
   parseBody,
+  parseQuery,
 };

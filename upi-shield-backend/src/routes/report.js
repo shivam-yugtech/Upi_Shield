@@ -1,5 +1,5 @@
 const express = require('express');
-const { prisma } = require('../db');
+const { getDb } = require('../get-db');
 const { parseBody, reportBodySchema } = require('../validation');
 
 const router = express.Router();
@@ -12,6 +12,7 @@ router.post('/', async (req, res, next) => {
   try {
     const { newScamPhrase } = parseBody(reportBodySchema, req.body);
     const phrase = normalizePhrase(newScamPhrase);
+    const prisma = getDb(req);
 
     const existingPhrase = await prisma.threatPhrase.findUnique({
       where: { phrase },

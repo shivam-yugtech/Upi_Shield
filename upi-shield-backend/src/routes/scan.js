@@ -1,6 +1,7 @@
 const express = require('express');
-const { prisma } = require('../db');
+const { persistScan } = require('../services/scans');
 const { detectScam } = require('../detection/detection');
+const { getDb } = require('../get-db');
 const { parseBody, scanBodySchema } = require('../validation');
 
 const router = express.Router();
@@ -8,6 +9,7 @@ const router = express.Router();
 router.post('/', async (req, res, next) => {
   try {
     const { messageText } = parseBody(scanBodySchema, req.body);
+    const prisma = getDb(req);
 
     const records = await prisma.threatPhrase.findMany({
       where: { status: 'ACTIVE' },
@@ -19,8 +21,11 @@ router.post('/', async (req, res, next) => {
       records.map((row) => row.phrase)
     );
 
+    const saved = await persistScan(prisma, messageText, result);
+
     const payload = {
       success: true,
+      id: saved.id,
       isScam: result.isScam,
       riskScore: result.riskScore,
       category: result.category,

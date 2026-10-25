@@ -1,8 +1,8 @@
-const { prisma } = require('../db');
+const { getDb } = require('../get-db');
 
 async function healthHandler(req, res) {
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await getDb(req).$queryRaw`SELECT 1`;
     return res.json({
       status: 'ok',
       database: 'connected',

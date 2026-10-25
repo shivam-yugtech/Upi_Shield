@@ -6,10 +6,12 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
 const { errorHandler } = require('./middleware/errorHandler');
+const { prisma } = require('./db');
 const { healthHandler } = require('./routes/health');
 const keywordsRouter = require('./routes/keywords');
 const reportRouter = require('./routes/report');
 const scanRouter = require('./routes/scan');
+const scansRouter = require('./routes/scans');
 
 function corsOrigin() {
   const configured = (process.env.CLIENT_ORIGIN || '*').trim();
@@ -20,8 +22,9 @@ function corsOrigin() {
   return origins.length === 1 ? origins[0] : origins;
 }
 
-function createApp() {
+function createApp({ prisma: prismaOverride } = {}) {
   const app = express();
+  app.set('prisma', prismaOverride || prisma);
 
   if (process.env.NODE_ENV === 'production') {
     app.set('trust proxy', 1);
@@ -61,6 +64,7 @@ function createApp() {
   app.get('/health', healthHandler);
   app.use('/api/keywords', keywordsRouter);
   app.use('/api/scan', scanRouter);
+  app.use('/api/scans', scansRouter);
   app.use('/api/report', reportRouter);
 
   app.use((req, res) => {
